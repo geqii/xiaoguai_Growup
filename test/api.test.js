@@ -1,3 +1,6 @@
+process.env.NODE_ENV = "test";
+process.env.MISTAKE_DB_PATH = ":memory:";
+
 const fs = require("fs");
 const path = require("path");
 const request = require("supertest");

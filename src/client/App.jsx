@@ -449,13 +449,19 @@ function App() {
     if (!dailyCheckin) {
       return;
     }
+    const beforeTotal = pointsTotal?.totalPoints ?? null;
     const data = await updateDailyPoints(pointsDate, dailyCheckin);
     if (data.date) {
       const refreshed = await fetchDailyPoints(pointsDate);
       setDailyCheckin(refreshed.checkin || null);
       setDailySummary(refreshed.summary || null);
-      setMessage("今日打卡已保存");
-      fetchPointsTotal().then((t) => setPointsTotal(t));
+      const total = await fetchPointsTotal();
+      setPointsTotal(total);
+      if (beforeTotal !== null) {
+        setMessage(`今日打卡已保存；累计总积分：${beforeTotal} → ${total.totalPoints}`);
+      } else {
+        setMessage("今日打卡已保存");
+      }
       setEventsQuery((prev) => ({ ...prev, page: 1 }));
       return;
     }
@@ -794,7 +800,7 @@ function App() {
                 </label>
               </div>
             ) : null}
-            <button type="button" className="btn btn-primary" onClick={saveDailyCheckin}>
+            <button type="button" className="btn btn-primary" onClick={saveDailyCheckin} disabled={!dailyCheckin}>
               保存今日打卡
             </button>
           </section>
