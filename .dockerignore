@@ -1,0 +1,10 @@
+node_modules
+.git
+.DS_Store
+npm-debug.log
+logs/*.log
+backups/*.db
+data
+src/server/db/*.db
+src/server/db/*.db-shm
+src/server/db/*.db-wal

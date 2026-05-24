@@ -1,14 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { PHONICS_AUDIO_MAP } from "../shared/phonicsAudioMap";
 import {
+  createBackup,
   createExamPoints,
   createMistake,
+  createPhonicsWord,
   createPointEvent,
   createPointItem,
   createSemesterGoal,
   createWeeklyPlan,
+  deletePhonicsWord,
   deleteWeeklyPlan,
+  fetchBackups,
   fetchDailyPoints,
   fetchSemesterGoals,
+  fetchPhonicsCatalog,
   fetchPointEvents,
   fetchPointItems,
   fetchPointsTotal,
@@ -17,6 +23,7 @@ import {
   fetchMistakes,
   fetchWeeklyPlans,
   runOcr,
+  restoreBackup,
   updateDailyPoints,
   updatePointItem,
   updateSemesterGoal,
@@ -43,6 +50,11 @@ const REQUIRED_LABELS = {
   source_name: "试卷/作业名",
   source_date: "日期",
   source_question_no: "题号",
+};
+
+const PHONICS_PAGE_SIZE = {
+  vowel: 8,
+  consonant: 10,
 };
 
 function App() {
@@ -121,6 +133,31 @@ function App() {
     pageSize: 20,
   });
   const [eventsResult, setEventsResult] = useState(null);
+  const [phonicsData, setPhonicsData] = useState({
+    vowels: [],
+    consonants: [],
+  });
+  const [speakingKey, setSpeakingKey] = useState("");
+  const [audioPlayer, setAudioPlayer] = useState(null);
+  const [phonicsPages, setPhonicsPages] = useState({
+    vowel: 1,
+    consonant: 1,
+  });
+  const [phonicsForm, setPhonicsForm] = useState({
+    category: "vowel",
+    symbol: "",
+    word: "",
+    highlight_text: "",
+    note: "",
+  });
+  const [backupState, setBackupState] = useState({
+    enabled: true,
+    backupDir: "",
+    dbPath: "",
+    items: [],
+    message: "",
+  });
+  const [backupBusy, setBackupBusy] = useState(false);
 
   const [newItemForm, setNewItemForm] = useState({
     code: "",
@@ -161,6 +198,20 @@ function App() {
       setDailySummary(data.summary || null);
     });
   }, [tab, pointsDate]);
+
+  useEffect(() => {
+    if (tab !== "phonics") {
+      return;
+    }
+    loadPhonics();
+  }, [tab]);
+
+  useEffect(() => {
+    if (tab !== "backup") {
+      return;
+    }
+    loadBackups();
+  }, [tab]);
 
   useEffect(() => {
     if (tab !== "points") {
@@ -249,8 +300,127 @@ function App() {
     return `${yy}-${mm}-${dd}`;
   }
 
+  function formatDateTimeLabel(value) {
+    if (!value) {
+      return "-";
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    return `${y}-${m}-${d} ${hh}:${mm}`;
+  }
+
+  function formatSizeLabel(sizeBytes) {
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+      return "-";
+    }
+    if (sizeBytes < 1024) {
+      return `${sizeBytes} B`;
+    }
+    if (sizeBytes < 1024 * 1024) {
+      return `${(sizeBytes / 1024).toFixed(1)} KB`;
+    }
+    return `${(sizeBytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  function renderUnderlinedWord(word, highlightText) {
+    const text = String(word || "");
+    const target = String(highlightText || "").trim();
+    if (!text || !target) {
+      return text || "-";
+    }
+    const lowerText = text.toLowerCase();
+    const lowerTarget = target.toLowerCase();
+    const index = lowerText.indexOf(lowerTarget);
+    if (index < 0) {
+      return text;
+    }
+    return (
+      <>
+        {text.slice(0, index)}
+        <span className="phonics-underline">{text.slice(index, index + target.length)}</span>
+        {text.slice(index + target.length)}
+      </>
+    );
+  }
+
+  function playPhonicsAudio(item) {
+    const config = PHONICS_AUDIO_MAP[item.symbol];
+    if (!config?.enabled || !config.audioFile) {
+      setMessage("这个音标暂未接入可靠本地音频，先不要用它来带读孩子");
+      return;
+    }
+    if (audioPlayer) {
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+    }
+
+    const player = new window.Audio(config.audioFile);
+    setAudioPlayer(player);
+    setSpeakingKey(`${item.symbol}:symbol`);
+    player.onended = () => {
+      setSpeakingKey("");
+      setAudioPlayer(null);
+    };
+    player.onerror = () => {
+      setSpeakingKey("");
+      setAudioPlayer(null);
+      setMessage("本地音频播放失败");
+    };
+    player.play().catch(() => {
+      setSpeakingKey("");
+      setAudioPlayer(null);
+      setMessage("本地音频播放失败");
+    });
+  }
+
+  function speakSampleWord(item) {
+    if (!window.speechSynthesis || typeof window.SpeechSynthesisUtterance === "undefined") {
+      setMessage("当前浏览器暂不支持例词朗读");
+      return;
+    }
+    if (audioPlayer) {
+      audioPlayer.pause();
+      audioPlayer.currentTime = 0;
+      setAudioPlayer(null);
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new window.SpeechSynthesisUtterance(item.sampleWord);
+    utterance.lang = "en-GB";
+    utterance.rate = 0.85;
+    utterance.onstart = () => setSpeakingKey(`${item.symbol}:word`);
+    utterance.onend = () => setSpeakingKey("");
+    utterance.onerror = () => {
+      setSpeakingKey("");
+      setMessage("例词发音失败，请稍后再试");
+    };
+    window.speechSynthesis.speak(utterance);
+  }
+
   const weekStart = useMemo(() => computeWeekStartYmd(weekDate), [weekDate]);
   const weekEnd = useMemo(() => addDaysYmd(weekStart, 6), [weekStart]);
+  const currentPhonicsOptions = useMemo(() => {
+    return phonicsForm.category === "consonant" ? phonicsData.consonants : phonicsData.vowels;
+  }, [phonicsData, phonicsForm.category]);
+
+  useEffect(() => {
+    if (!currentPhonicsOptions.length) {
+      if (phonicsForm.symbol) {
+        setPhonicsForm((prev) => ({ ...prev, symbol: "" }));
+      }
+      return;
+    }
+    const matched = currentPhonicsOptions.some((item) => item.symbol === phonicsForm.symbol);
+    if (!matched) {
+      setPhonicsForm((prev) => ({ ...prev, symbol: currentPhonicsOptions[0].symbol }));
+    }
+  }, [currentPhonicsOptions, phonicsForm.symbol]);
 
   useEffect(() => {
     if (tab !== "weekly") {
@@ -551,6 +721,98 @@ function App() {
     setMessage(data.message || "录入失败");
   }
 
+  async function loadPhonics() {
+    const data = await fetchPhonicsCatalog();
+    setPhonicsData({
+      vowels: Array.isArray(data.vowels) ? data.vowels : [],
+      consonants: Array.isArray(data.consonants) ? data.consonants : [],
+    });
+  }
+
+  async function submitPhonicsWord() {
+    const word = String(phonicsForm.word || "").trim();
+    if (!phonicsForm.symbol) {
+      setMessage("请先选择音标");
+      return;
+    }
+    if (!word) {
+      setMessage("请先填写单词");
+      return;
+    }
+    const data = await createPhonicsWord({
+      category: phonicsForm.category,
+      symbol: phonicsForm.symbol,
+      word,
+      highlight_text: phonicsForm.highlight_text,
+      note: phonicsForm.note,
+    });
+    if (data.id) {
+      setPhonicsForm((prev) => ({
+        ...prev,
+        word: "",
+        highlight_text: "",
+        note: "",
+      }));
+      await loadPhonics();
+      setMessage("单词已添加到对应音标");
+      return;
+    }
+    setMessage(data.message || "添加失败");
+  }
+
+  async function removePhonicsWord(id) {
+    const ok = window.confirm("确定删除这个自定义单词吗？");
+    if (!ok) {
+      return;
+    }
+    const data = await deletePhonicsWord(id);
+    if (data.id) {
+      await loadPhonics();
+      setMessage("单词已删除");
+      return;
+    }
+    setMessage(data.message || "删除失败");
+  }
+
+  async function loadBackups() {
+    const data = await fetchBackups();
+    setBackupState({
+      enabled: data.enabled !== false,
+      backupDir: data.backupDir || "",
+      dbPath: data.dbPath || "",
+      items: Array.isArray(data.items) ? data.items : [],
+      message: data.message || "",
+    });
+  }
+
+  async function handleCreateBackup() {
+    setBackupBusy(true);
+    const data = await createBackup();
+    setBackupBusy(false);
+    if (data.item?.fileName) {
+      setMessage(`备份成功：${data.item.fileName}`);
+      await loadBackups();
+      return;
+    }
+    setMessage(data.message || "备份失败");
+  }
+
+  async function handleRestoreBackup(fileName) {
+    const ok = window.confirm(`确定恢复备份 ${fileName} 吗？恢复后会覆盖当前数据库内容。`);
+    if (!ok) {
+      return;
+    }
+    setBackupBusy(true);
+    const data = await restoreBackup(fileName);
+    setBackupBusy(false);
+    if (data.restored?.fileName) {
+      window.alert(`已恢复备份：${data.restored.fileName}。页面将刷新以载入最新数据。`);
+      window.location.reload();
+      return;
+    }
+    setMessage(data.message || "恢复失败");
+  }
+
   function startEditPointItem(item) {
     setEditingItemCode(item.code);
     setEditingItemForm({
@@ -624,6 +886,95 @@ function App() {
       return;
     }
     setMessage(data.message || "创建失败");
+  }
+
+  function renderPhonicsSection(title, category, items) {
+    const pageSize = PHONICS_PAGE_SIZE[category];
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const page = Math.min(phonicsPages[category] || 1, totalPages);
+    const start = (page - 1) * pageSize;
+    const pagedItems = items.slice(start, start + pageSize);
+
+    return (
+      <section className="card form-grid">
+        <div className="phonics-section-header">
+          <div>
+            <div className="semester-title">{title}</div>
+            <div className="semester-subtitle">点击翻页可查看更多音标卡片</div>
+          </div>
+          <div className="phonics-page-badge">
+            第{page}页 / 共{totalPages}页
+          </div>
+        </div>
+        <div className="phonics-grid">
+          {pagedItems.map((item) => (
+            <article key={item.symbol} className="phonics-card">
+              <div className="phonics-top-row">
+                <div className="phonics-symbol">{item.symbol}</div>
+                <div className="phonics-speak-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-small phonics-speak-btn"
+                    onClick={() => playPhonicsAudio(item)}
+                    disabled={!PHONICS_AUDIO_MAP[item.symbol]?.enabled}
+                    title={PHONICS_AUDIO_MAP[item.symbol]?.enabled ? "播放本地固定音频" : "该音标暂未接入可靠本地音频"}
+                  >
+                    {speakingKey === `${item.symbol}:symbol` ? "播放中..." : "读音标"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-small phonics-speak-btn"
+                    onClick={() => speakSampleWord(item)}
+                  >
+                    {speakingKey === `${item.symbol}:word` ? "播放中..." : "读例词"}
+                  </button>
+                </div>
+              </div>
+              <div className="phonics-tip">{item.tip}</div>
+              <div className="phonics-sample">
+                例词：{renderUnderlinedWord(item.sampleWord, item.highlightText)}
+              </div>
+              <div className="phonics-custom-title">我的补充单词</div>
+              {item.customWords?.length ? (
+                <div className="phonics-word-list">
+                  {item.customWords.map((word) => (
+                    <button
+                      key={word.id}
+                      type="button"
+                      className="phonics-word-chip"
+                      onClick={() => removePhonicsWord(word.id)}
+                      title={word.note ? `${word.word}：${word.note}` : "点击删除"}
+                    >
+                      {renderUnderlinedWord(word.word, word.highlight_text)}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="phonics-empty">还没有自己添加的单词</div>
+              )}
+            </article>
+          ))}
+        </div>
+        <div className="points-pagination phonics-pagination">
+          <button
+            type="button"
+            className="btn btn-secondary btn-small"
+            disabled={page <= 1}
+            onClick={() => setPhonicsPages((prev) => ({ ...prev, [category]: Math.max(1, page - 1) }))}
+          >
+            上一页
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-small"
+            disabled={page >= totalPages}
+            onClick={() => setPhonicsPages((prev) => ({ ...prev, [category]: Math.min(totalPages, page + 1) }))}
+          >
+            下一页
+          </button>
+        </div>
+      </section>
+    );
   }
 
   async function handleOcr() {
@@ -737,6 +1088,12 @@ function App() {
         </button>
         <button type="button" className={`btn ${tab === "points" ? "btn-primary" : "btn-secondary"}`} onClick={() => setTab("points")}>
           积分
+        </button>
+        <button type="button" className={`btn ${tab === "phonics" ? "btn-primary" : "btn-secondary"}`} onClick={() => setTab("phonics")}>
+          英语音标
+        </button>
+        <button type="button" className={`btn ${tab === "backup" ? "btn-primary" : "btn-secondary"}`} onClick={() => setTab("backup")}>
+          备份恢复
         </button>
       </div>
       <p className="status-text">{message}</p>
@@ -1148,6 +1505,111 @@ function App() {
                 </li>
               ))}
             </ul>
+          </section>
+        </div>
+      ) : tab === "phonics" ? (
+        <div className="form-grid">
+          <section className="card phonics-hero">
+            <div className="phonics-hero-title">英语音标复习</div>
+            <div className="phonics-hero-subtitle">音标按钮现在优先播放本地固定音频；没有可靠本地音频的音标会先禁用，避免误导孩子。例词按钮只作为辅助朗读。</div>
+          </section>
+
+          <section className="card form-grid">
+            <div className="semester-title">添加自己的单词</div>
+            <div className="phonics-form-grid">
+              <label className="form-field">
+                分类
+                <select value={phonicsForm.category} onChange={(e) => setPhonicsForm((prev) => ({ ...prev, category: e.target.value }))}>
+                  <option value="vowel">元音</option>
+                  <option value="consonant">辅音</option>
+                </select>
+              </label>
+              <label className="form-field">
+                音标
+                <select value={phonicsForm.symbol} onChange={(e) => setPhonicsForm((prev) => ({ ...prev, symbol: e.target.value }))}>
+                  {currentPhonicsOptions.map((item) => (
+                    <option key={item.symbol} value={item.symbol}>
+                      {item.symbol} / {item.sampleWord}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="form-field">
+                单词
+                <input value={phonicsForm.word} onChange={(e) => setPhonicsForm((prev) => ({ ...prev, word: e.target.value }))} placeholder="例如：green" />
+              </label>
+              <label className="form-field">
+                下划线字母
+                <input
+                  value={phonicsForm.highlight_text}
+                  onChange={(e) => setPhonicsForm((prev) => ({ ...prev, highlight_text: e.target.value }))}
+                  placeholder="例如：ee"
+                />
+              </label>
+            </div>
+            <label className="form-field">
+              备注（可选）
+              <input value={phonicsForm.note} onChange={(e) => setPhonicsForm((prev) => ({ ...prev, note: e.target.value }))} placeholder="例如：这个词在课本里常见" />
+            </label>
+            <button type="button" className="btn btn-primary" onClick={submitPhonicsWord}>
+              添加到对应音标
+            </button>
+          </section>
+
+          {renderPhonicsSection("元音音标", "vowel", phonicsData.vowels)}
+          {renderPhonicsSection("辅音音标", "consonant", phonicsData.consonants)}
+        </div>
+      ) : tab === "backup" ? (
+        <div className="form-grid">
+          <section className="card backup-hero">
+            <div className="backup-hero-title">数据库备份与恢复</div>
+            <div className="backup-hero-subtitle">立即生成当前 SQLite 快照，也可以从历史备份恢复。</div>
+            <div className="backup-meta-grid">
+              <div className="backup-meta-card">
+                <div className="backup-meta-label">数据库文件</div>
+                <div className="backup-meta-value">{backupState.dbPath || "当前环境未启用文件数据库"}</div>
+              </div>
+              <div className="backup-meta-card">
+                <div className="backup-meta-label">备份目录</div>
+                <div className="backup-meta-value">{backupState.backupDir || "-"}</div>
+              </div>
+            </div>
+            <div className="backup-action-row">
+              <button type="button" className="btn btn-primary" onClick={handleCreateBackup} disabled={backupBusy || !backupState.enabled}>
+                {backupBusy ? "处理中..." : "立即备份"}
+              </button>
+              <div className="backup-inline-tip">
+                {backupState.message || "恢复会覆盖当前数据库内容，建议先点一次“立即备份”。"}
+              </div>
+            </div>
+          </section>
+
+          <section className="card form-grid">
+            <div className="semester-title">历史备份</div>
+            {backupState.items.length > 0 ? (
+              <ul className="plan-list">
+                {backupState.items.map((item) => (
+                  <li key={item.fileName} className="plan-item backup-item">
+                    <div className="backup-item-main">
+                      <div className="points-event-title">{item.fileName}</div>
+                      <div className="backup-item-meta">
+                        创建时间：{formatDateTimeLabel(item.updatedAt)} | 大小：{formatSizeLabel(item.sizeBytes)}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-small"
+                      disabled={backupBusy || !backupState.enabled}
+                      onClick={() => handleRestoreBackup(item.fileName)}
+                    >
+                      恢复此备份
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="backup-empty">还没有备份文件，先点击上方“立即备份”。</div>
+            )}
           </section>
         </div>
       ) : tab === "weekly" ? (

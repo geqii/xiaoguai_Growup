@@ -81,6 +81,19 @@ function initSchema() {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS phonics_words (
+      id TEXT PRIMARY KEY,
+      symbol TEXT NOT NULL,
+      category TEXT NOT NULL CHECK (category IN ('vowel', 'consonant')),
+      word TEXT NOT NULL,
+      highlight_text TEXT,
+      note TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_phonics_words_symbol ON phonics_words(symbol);
+    CREATE INDEX IF NOT EXISTS idx_phonics_words_category ON phonics_words(category);
   `);
 }
 

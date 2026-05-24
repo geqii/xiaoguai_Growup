@@ -10,6 +10,8 @@ const metaRoutes = require("./routes/metaRoutes");
 const weeklyPlanRoutes = require("./routes/weeklyPlanRoutes");
 const semesterGoalRoutes = require("./routes/semesterGoalRoutes");
 const pointsRoutes = require("./routes/pointsRoutes");
+const backupRoutes = require("./routes/backupRoutes");
+const phonicsRoutes = require("./routes/phonicsRoutes");
 
 const app = express();
 const logDir = path.join(process.cwd(), "logs");
@@ -30,6 +32,8 @@ app.use("/api/meta", metaRoutes);
 app.use("/api/weekly-plans", weeklyPlanRoutes);
 app.use("/api/semester-goals", semesterGoalRoutes);
 app.use("/api/points", pointsRoutes);
+app.use("/api/phonics", phonicsRoutes);
+app.use("/api/backups", backupRoutes);
 
 const distDir = path.join(process.cwd(), "dist");
 if (fs.existsSync(distDir)) {
@@ -39,7 +43,7 @@ if (fs.existsSync(distDir)) {
   });
 } else {
   app.get("/", (req, res) => {
-    res.status(200).send("后端服务运行中。请访问前端开发地址：http://localhost:5174");
+    res.status(200).send("后端服务运行中。请访问前端开发地址：http://localhost:5173");
   });
 }
 

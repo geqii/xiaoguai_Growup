@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.trae/
+.vercel/
+logs/
+backups/
+data/
+
+*.log
+.DS_Store
+
+src/server/db/*.db
+src/server/db/*.db-shm
+src/server/db/*.db-wal
+src/uploads/
+src/exports/

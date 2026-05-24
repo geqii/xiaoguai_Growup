@@ -373,3 +373,220 @@
   font-weight: 700;
   opacity: 0.95;
 }
+
+.backup-hero {
+  background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+  border-color: #bfdbfe;
+}
+
+.backup-hero-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.backup-hero-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.backup-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.backup-meta-card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.backup-meta-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.backup-meta-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.backup-action-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.backup-inline-tip {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.backup-item {
+  grid-template-columns: 1fr auto;
+}
+
+.backup-item-main {
+  display: grid;
+  gap: 4px;
+}
+
+.backup-item-meta {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.backup-empty {
+  font-size: 14px;
+  color: #475569;
+  font-weight: 700;
+}
+
+.phonics-hero {
+  background: linear-gradient(135deg, #eef2ff, #ecfeff);
+  border-color: #c7d2fe;
+}
+
+.phonics-hero-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.phonics-hero-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.phonics-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.phonics-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.phonics-page-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.phonics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.phonics-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  display: grid;
+  gap: 8px;
+}
+
+.phonics-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.phonics-symbol {
+  font-size: 30px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.phonics-speak-btn {
+  white-space: nowrap;
+}
+
+.phonics-speak-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.phonics-tip {
+  font-size: 13px;
+  color: #6366f1;
+  font-weight: 800;
+}
+
+.phonics-sample {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.phonics-underline {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: #2563eb;
+  text-underline-offset: 3px;
+}
+
+.phonics-custom-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #475569;
+}
+
+.phonics-word-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.phonics-word-chip {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.phonics-pagination {
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .phonics-form-grid,
+  .phonics-grid {
+    grid-template-columns: 1fr;
+  }
+}

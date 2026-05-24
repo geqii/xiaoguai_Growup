@@ -1,0 +1,10 @@
+Phonics audio attribution
+
+Local phoneme audio files in this folder are sourced from Wikimedia Commons and the
+archived Wikimedia phoneme collection at https://github.com/jynbug/wikimedia-phoneme-audio.
+
+Consonant audio files are copied from the archived collection above.
+Vowel audio files are downloaded from Wikimedia Commons Special:FilePath links.
+
+These files keep their original open licenses from Wikimedia Commons contributors.
+See the original file pages for exact attribution and license details.

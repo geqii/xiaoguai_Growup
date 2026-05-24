@@ -170,3 +170,45 @@ export async function fetchPointsTotal() {
   const res = await fetch("/api/points/total");
   return res.json();
 }
+
+export async function fetchPhonicsCatalog() {
+  const res = await fetch("/api/phonics/catalog");
+  return res.json();
+}
+
+export async function createPhonicsWord(payload) {
+  const res = await fetch("/api/phonics/words", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
+
+export async function deletePhonicsWord(id) {
+  const res = await fetch(`/api/phonics/words/${id}`, {
+    method: "DELETE",
+  });
+  return res.json();
+}
+
+export async function fetchBackups() {
+  const res = await fetch("/api/backups");
+  return res.json();
+}
+
+export async function createBackup() {
+  const res = await fetch("/api/backups", {
+    method: "POST",
+  });
+  return res.json();
+}
+
+export async function restoreBackup(fileName) {
+  const res = await fetch("/api/backups/restore", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_name: fileName }),
+  });
+  return res.json();
+}
