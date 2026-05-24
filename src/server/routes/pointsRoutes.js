@@ -1,5 +1,5 @@
 const express = require("express");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const db = require("../db/database");
 
 const router = express.Router();
@@ -82,7 +82,7 @@ router.post("/items", (req, res) => {
     return res.status(400).json({ message: "code 已存在" });
   }
 
-  const id = uuidv4();
+  const id = randomUUID();
   const now = new Date().toISOString();
   db.prepare(
     `INSERT INTO point_items
@@ -324,7 +324,7 @@ router.post("/exams", (req, res) => {
   const calculated = base * multiplier;
   const finalPoints = overridePoints === null ? calculated : overridePoints;
 
-  const id = uuidv4();
+  const id = randomUUID();
   const meta = {
     subject,
     score,
@@ -378,7 +378,7 @@ router.post("/events", (req, res) => {
     }
   }
 
-  const id = uuidv4();
+  const id = randomUUID();
   upsertEvent({
     id,
     occurred_date: date,

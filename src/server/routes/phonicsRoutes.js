@@ -1,5 +1,5 @@
 const express = require("express");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const db = require("../db/database");
 const { VOWELS, CONSONANTS, PHONICS_BY_SYMBOL } = require("../../shared/phonicsCatalog");
 
@@ -66,7 +66,7 @@ router.post("/words", (req, res) => {
     return res.status(400).json({ message: "该音标下已存在相同单词" });
   }
 
-  const id = uuidv4();
+  const id = randomUUID();
   const now = new Date().toISOString();
   db.prepare(
     `INSERT INTO phonics_words

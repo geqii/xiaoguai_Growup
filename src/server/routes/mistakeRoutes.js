@@ -1,8 +1,8 @@
 const express = require("express");
+const { randomUUID } = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
-const { v4: uuidv4 } = require("uuid");
 const db = require("../db/database");
 const { validateMistakePayload } = require("../services/validation");
 
@@ -19,7 +19,7 @@ function maybeMoveImage(tempPath, subject) {
   const dateDir = new Date().toISOString().slice(0, 10);
   const targetDir = path.join(process.cwd(), "src", "uploads", subject, dateDir);
   fs.mkdirSync(targetDir, { recursive: true });
-  const targetPath = path.join(targetDir, `${uuidv4()}.jpg`);
+  const targetPath = path.join(targetDir, `${randomUUID()}.jpg`);
   fs.renameSync(tempPath, targetPath);
   return targetPath;
 }
@@ -44,7 +44,7 @@ router.post("/", upload.single("image"), (req, res) => {
     return res.status(400).json({ message: error });
   }
 
-  const id = uuidv4();
+  const id = randomUUID();
   const now = new Date().toISOString();
   const imagePath = maybeMoveImage(req.file?.path, payload.subject);
 

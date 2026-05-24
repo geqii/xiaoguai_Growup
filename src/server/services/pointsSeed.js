@@ -1,5 +1,5 @@
 const db = require("../db/database");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 
 function ensurePointsSeed() {
   const now = new Date().toISOString();
@@ -56,7 +56,7 @@ function ensurePointsSeed() {
     const row = db.prepare("SELECT COUNT(1) as cnt FROM point_items").get();
     for (const item of items) {
       const args = [
-        uuidv4(),
+        randomUUID(),
         item.code,
         item.name,
         item.category,

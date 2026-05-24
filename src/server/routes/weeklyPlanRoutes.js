@@ -1,5 +1,5 @@
 const express = require("express");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const db = require("../db/database");
 
 const router = express.Router();
@@ -54,7 +54,7 @@ router.post("/", (req, res) => {
     return res.status(400).json({ message: "content 为必填项" });
   }
 
-  const id = uuidv4();
+  const id = randomUUID();
   const now = new Date().toISOString();
   const stmt = db.prepare(
     `INSERT INTO weekly_plan_items (id, week_start_date, content, is_done, created_at, updated_at)

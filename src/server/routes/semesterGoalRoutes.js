@@ -1,5 +1,5 @@
 const express = require("express");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const db = require("../db/database");
 
 const router = express.Router();
@@ -57,7 +57,7 @@ router.post("/", (req, res) => {
     return res.status(400).json({ message: "该学期已存在" });
   }
 
-  const id = uuidv4();
+  const id = randomUUID();
   const now = new Date().toISOString();
   db.prepare(
     `INSERT INTO semester_goals
